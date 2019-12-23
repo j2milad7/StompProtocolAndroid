@@ -18,13 +18,13 @@ import io.reactivex.Flowable;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.subjects.BehaviorSubject;
 import io.reactivex.subjects.PublishSubject;
+import ua.naiksoftware.stomp.dto.LifecycleEvent;
 import ua.naiksoftware.stomp.dto.StompCommand;
+import ua.naiksoftware.stomp.dto.StompHeader;
 import ua.naiksoftware.stomp.dto.StompMessage;
 import ua.naiksoftware.stomp.pathmatcher.PathMatcher;
 import ua.naiksoftware.stomp.pathmatcher.SimplePathMatcher;
 import ua.naiksoftware.stomp.provider.ConnectionProvider;
-import ua.naiksoftware.stomp.dto.LifecycleEvent;
-import ua.naiksoftware.stomp.dto.StompHeader;
 
 /**
  * Created by naik on 05.05.16.
@@ -121,7 +121,7 @@ public class StompClient {
                                     .subscribe(() -> {
                                         Log.d(TAG, "Publish open");
                                         lifecyclePublishSubject.onNext(lifecycleEvent);
-                                    });
+                                    }, throwable -> Log.e(TAG, "Open error", throwable));
                             break;
 
                         case CLOSED:
@@ -143,7 +143,7 @@ public class StompClient {
                 .filter(msg -> msg.getStompCommand().equals(StompCommand.CONNECTED))
                 .subscribe(stompMessage -> {
                     getConnectionStream().onNext(true);
-                });
+                }, throwable -> Log.e(TAG, "Message error", throwable));
     }
 
     synchronized private BehaviorSubject<Boolean> getConnectionStream() {
@@ -241,10 +241,10 @@ public class StompClient {
         else if (!streamMap.containsKey(destPath))
             streamMap.put(destPath,
                     subscribePath(destPath, headerList).andThen(
-                    getMessageStream()
-                            .filter(msg -> pathMatcher.matches(destPath, msg))
-                            .toFlowable(BackpressureStrategy.BUFFER)
-                            .share()).doFinally(() -> unsubscribePath(destPath).subscribe())
+                            getMessageStream()
+                                    .filter(msg -> pathMatcher.matches(destPath, msg))
+                                    .toFlowable(BackpressureStrategy.BUFFER)
+                                    .share()).doFinally(() -> unsubscribePath(destPath).subscribe())
             );
         return streamMap.get(destPath);
     }
